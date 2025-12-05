@@ -109,6 +109,7 @@ const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(({ plan, 
                 wallIds: []
             };
 
+            // Immutable update
             const newPlan = {
                 ...plan,
                 corners: { ...plan.corners, [newCornerId]: newCorner }
@@ -132,9 +133,16 @@ const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(({ plan, 
                 };
 
                 // Re-construct the state we want to save
-                let nextPlan = { ...plan };
+                // IMPORTANT: We must create a new object for corners and walls to avoid mutating history
+                let nextPlan = {
+                    ...plan,
+                    corners: { ...plan.corners },
+                    walls: { ...plan.walls }
+                };
 
                 // If we created a new corner (clickedCornerId was null initially), add it to nextPlan
+                // Note: If we called onPlanChange above, 'plan' is still the old one. 
+                // We need to ensure nextPlan has the new corner if it was just created.
                 if (!plan.corners[clickedCornerId]) {
                     const newCorner: Corner = {
                         id: clickedCornerId,
@@ -187,7 +195,11 @@ const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(({ plan, 
                         type: 'interior'
                     };
 
-                    const nextPlan = { ...plan };
+                    const nextPlan = {
+                        ...plan,
+                        walls: { ...plan.walls },
+                        corners: { ...plan.corners }
+                    };
                     nextPlan.walls[newWallId] = newWall;
 
                     nextPlan.corners[drawingStartCornerId] = {
@@ -207,7 +219,11 @@ const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(({ plan, 
             }
         } else if (mode === 'delete') {
             // Delete corner and connected walls
-            const nextPlan = { ...plan };
+            const nextPlan = {
+                ...plan,
+                walls: { ...plan.walls },
+                corners: { ...plan.corners }
+            };
             const corner = nextPlan.corners[cornerId];
 
             if (corner) {
@@ -220,7 +236,13 @@ const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(({ plan, 
 
                 // Cleanup: Remove deleted wall IDs from all other corners
                 Object.keys(nextPlan.corners).forEach(cId => {
-                    nextPlan.corners[cId].wallIds = nextPlan.corners[cId].wallIds.filter(wId => nextPlan.walls[wId]);
+                    const c = nextPlan.corners[cId];
+                    if (c) {
+                        nextPlan.corners[cId] = {
+                            ...c,
+                            wallIds: c.wallIds.filter(wId => nextPlan.walls[wId])
+                        };
+                    }
                 });
 
                 onPlanChange(nextPlan);
@@ -230,12 +252,22 @@ const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(({ plan, 
 
     const handleWallClick = (wallId: string) => {
         if (mode === 'delete') {
-            const nextPlan = { ...plan };
+            const nextPlan = {
+                ...plan,
+                walls: { ...plan.walls },
+                corners: { ...plan.corners }
+            };
             delete nextPlan.walls[wallId];
 
             // Cleanup: Remove wall ID from corners
             Object.keys(nextPlan.corners).forEach(cId => {
-                nextPlan.corners[cId].wallIds = nextPlan.corners[cId].wallIds.filter(wId => wId !== wallId);
+                const c = nextPlan.corners[cId];
+                if (c) {
+                    nextPlan.corners[cId] = {
+                        ...c,
+                        wallIds: c.wallIds.filter(wId => wId !== wallId)
+                    };
+                }
             });
 
             onPlanChange(nextPlan);
