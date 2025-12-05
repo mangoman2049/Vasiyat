@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { Stage, Layer, Circle, Line, Text, Group } from 'react-konva';
 import { useGesture } from '@use-gesture/react';
 import type { FloorPlan, Corner, Wall } from '../types';
